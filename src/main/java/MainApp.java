@@ -1,18 +1,18 @@
 import javafx.application.Application;
-import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TablePosition;
+import javafx.scene.control.TextField;
+import javafx.scene.control.skin.TableHeaderRow;
 import javafx.scene.input.*;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 
 import javax.swing.*;
@@ -21,21 +21,26 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Properties;
 
 public class MainApp extends Application {
     final int UNITS_LENGTH  = 1000;
     private BigDecimal[][] units = new BigDecimal[UNITS_LENGTH][UNITS_LENGTH];
-
+    private int lastRowIndex = -1, lastColumnIndex = -1;
     private MouseEvent lastMouseEvent;
     private KeyEvent lastKeyEvent;
     private static ScrollEvent lastScrollEvent;
+    Parent root;
+    Scene mainScene;
+    Stage dialog;
+    Text dialogText;
+    TextField dialogTextField;
 
     String[] header = new String[1000];
 
     FxController fxController;
     final String numbers = "0123456789";
-    private static  ArrayList<Tool> tools = new ArrayList<>();
+    final String correctTypes ="shm%";
+    private static ArrayList<Tool> tools = new ArrayList<>();
     private static String filePath;
 
     private static int maxColumnNum  = 0;
@@ -85,7 +90,7 @@ public class MainApp extends Application {
         while ( (str = bufRead.readLine()) != null)
         {
             // очистим массивы после предыдущей загрузки
-            for (int i = 0; i<=types.length-1; i++) {
+            for (int i = 0; i <= types.length - 1; i++) {
                 types[i] = null;
                 values[i] = null;
             }
@@ -143,13 +148,19 @@ public class MainApp extends Application {
         return (res == null ? null : new BigDecimal(res));
     }
 
-    public void setSelectedValue(int rowIndex, int colIndex, BigDecimal value) {
-        if (rowIndex >= 0 && colIndex >= 0) {
+    public void setSelectedValue(int rowIndex, int colIndex,  BigDecimal value) {
+        if (rowIndex >= 0 && colIndex > 0) {
             Tool rowList =  fxController.getTbResult().getItems().get(rowIndex);
             rowList. getValues().set(colIndex, ColumnInfo.normalizeNumber(String.valueOf(value), '.', ' '));
         }
     }
 
+    public void setSelectedType(int rowIndex, int colIndex, String type) {
+        if (rowIndex >= 0 && colIndex > 0) {
+            Tool rowList =  fxController.getTbResult().getItems().get(rowIndex);
+            rowList. getTypes().set(colIndex, type);
+        }
+    }
     public BigDecimal getUnit(BigDecimal x, Integer row, Integer column) {
         BigDecimal z = null;
         if (row >= 0 && row < UNITS_LENGTH && column >= 0 && column < UNITS_LENGTH)
@@ -187,10 +198,8 @@ public class MainApp extends Application {
         return z;
     }
 
-    public void increase()  {
-        TablePosition tp = (TablePosition) fxController.getTbResult().getFocusModel().getFocusedCell();
-        int rowIndex = tp.getRow();
-        int colIndex = tp.getColumn();
+    public void increase(int rowIndex, int colIndex )  {
+        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
 
         BigDecimal d = getSelectedValue(rowIndex, colIndex);
         BigDecimal u = getUnit(d, rowIndex, colIndex);
@@ -204,10 +213,8 @@ public class MainApp extends Application {
             System.out.println("d=" + d + ", u=" + u);
     }
 
-    public void decrease() {
-        TablePosition tp = fxController.getTbResult().getFocusModel().getFocusedCell();
-        int rowIndex = tp.getRow();
-        int colIndex = tp.getColumn();
+    public void decrease(int rowIndex, int colIndex) {
+        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
 
         BigDecimal d = getSelectedValue(rowIndex, colIndex);
         BigDecimal u = getUnit(d, rowIndex, colIndex);
@@ -222,12 +229,9 @@ public class MainApp extends Application {
     }
 
     private void saveFile() {
-
         StringBuilder str = new StringBuilder();
 
-        try{
-            FileOutputStream l = new FileOutputStream(filePath);
-
+        try(FileOutputStream l = new FileOutputStream(filePath)){
             BufferedWriter r = new BufferedWriter(new OutputStreamWriter(l));
             for (String s : header) {
                 if (s != null) {
@@ -267,56 +271,53 @@ public class MainApp extends Application {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/mainForm.fxml"));
         fxController = new FxController( stage );
         fxmlLoader.setController(fxController);
-        Parent root = fxmlLoader.load();
+        root = fxmlLoader.load();
         stage.setTitle("Cписок средств и их параметров");
-        Scene scene = new Scene(root, 800, 100, null);
+        mainScene = new Scene(root, 800, 100, null);
 
-        scene.addEventFilter(MouseEvent.MOUSE_PRESSED, this::MousePressHandle);
-        scene.addEventFilter(MouseEvent.MOUSE_RELEASED, this::MouseReleaseHandle);
-        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::KeyPressHandle);
-        stage.setScene(scene);
+        mainScene.addEventFilter(MouseEvent.MOUSE_PRESSED, this::mousePressHandle);
+        mainScene.addEventFilter(MouseEvent.MOUSE_RELEASED, this::mouseReleaseHandle);
+        mainScene.addEventFilter(KeyEvent.KEY_PRESSED, this::keyPressHandle);
+        fxController.getTbResult().addEventFilter(ScrollEvent.SCROLL, this::onScrollHandle);
+
+        stage.setScene(mainScene);
         props.load_props(stage, fxController.getTbResult());
 
         stage.setOnHiding(new EventHandler<WindowEvent>() {
-
             public void handle(WindowEvent event) {
                 props.save_props(stage, fxController.getTbResult());
 
             }
         });
-
         stage.show();
-        //Creating the mouse event handler
 
-        EventHandler<ScrollEvent> eventHandler = new EventHandler<ScrollEvent>() {
-            @Override
-            public void handle(ScrollEvent e) { onScrollHandle(e); }
-        };
-        fxController.getTbResult().addEventFilter(ScrollEvent.ANY, eventHandler);
     }
 
     public void onScrollHandle (ScrollEvent event) {
         System.out.println("Mouse scroll detected: deltax=" + event.getDeltaX() + ", deltaY=" + event.getDeltaY()+ ", isShiftDown=" + event.isShiftDown());
-
+        TablePosition tp = (TablePosition) fxController.getTbResult().getFocusModel().getFocusedCell();
+        int colIndex = tp.getColumn();
+        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
+        int rowIndex = tp.getRow();
         if (!event.isAltDown()) {
             if (event.getDeltaY() > 0 || (event.isShiftDown() && event.getDeltaX() > 0)) {
                 lastScrollEvent = event;
-                increase();
+                increase(rowIndex, colIndex);
                 event.consume();
             } else if (event.getDeltaY() < 0 || (event.isShiftDown() && event.getDeltaX() < 0)) {
                 lastScrollEvent = event;
-                decrease();
+                decrease(rowIndex, colIndex);
                 event.consume();
             }
         } else if (event.getDeltaY() < 0) {
             fxController.getTbResult().getSelectionModel().selectBelowCell();
-            fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow());
+            fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
             System.out.println("select below cell");
 
             event.consume();
         } else if (event.getDeltaY() > 0) {
             fxController.getTbResult().getSelectionModel().selectAboveCell();
-            fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow());
+            fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
             System.out.println("select above cell");
             event.consume();
         }
@@ -325,27 +326,102 @@ public class MainApp extends Application {
         fxController.getTbResult().refresh();
     }
 
-    public void KeyPressHandle(KeyEvent ke) {
+    public void dialogKeyPressHandle(KeyEvent ke) {
         KeyCode code = ke.getCode();
         String name = code.getName();
-    //    System.out.println(name + " key press processing");
+        BigDecimal bd;
+        if  (code == KeyCode.ESCAPE) {
+            System.out.println("ESCAPE pressed in dialog, cancel editing");
+            dialog.close();
+            fxController.getTbResult().refresh();
+            ke.consume();
+        } else if  (code == KeyCode.ENTER) {
+            System.out.println("ENTER pressed in dialog");
+            String newValue = dialogTextField.getCharacters().toString();
+            String newType = dialogText.getText();
+            if (newType.length() == 0 && !numbers.contains(newValue.substring(newValue.length()-1))) {
+                newType = newValue.substring(newValue.length()-1);
+                newValue = newValue.substring(0, newValue.length()-1);
+            }
+            if (!correctTypes.contains(newType)) {
+                String errMsg = "ОШИБКА: некорректный тип " + newType;
+                System.err.println(errMsg);
+                JOptionPane.showMessageDialog(null, errMsg);
+                ke.consume();
+                return;
+            }
+            try {
+                bd = new BigDecimal(newValue);
+                setSelectedType(lastRowIndex, lastColumnIndex, newType);
+                setSelectedValue(lastRowIndex, lastColumnIndex, bd);
+                dialog.close();
+                fxController.getTbResult().refresh();
+                saveFile();
+                System.out.println("new value saved: " + newValue + newType);
+                ke.consume();
+            } catch( Exception e) {
+                String errMsg = "ОШИБКА: неверное число " + newValue + " [" + e.getMessage() + "]";
+                System.err.println(errMsg);
+                JOptionPane.showMessageDialog(null, errMsg);
+                ke.consume();
+                return;
+            }
+        }
+    }
 
-        if (!ke.isAltDown() && code == KeyCode.UP) {
+    public void keyPressHandle(KeyEvent ke) {
+        KeyCode code = ke.getCode();
+        String name = code.getName();
+        TablePosition tp = (TablePosition) fxController.getTbResult().getFocusModel().getFocusedCell();
+        int colIndex = tp.getColumn();
+        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
+        int rowIndex = tp.getRow();
+
+    //    System.out.println(name + " key press processing");
+        if (code == KeyCode.ENTER) {
+            lastColumnIndex = colIndex;
+            lastRowIndex = rowIndex;
+            System.out.println("ENTER key pressed, colIndex=" + colIndex + ", rowIndex=" + rowIndex);
+            dialog = new Stage();
+            dialog.initStyle(StageStyle.UTILITY);
+            String oldValue = fxController.getTbResult().getItems().get(rowIndex).getValues().get(colIndex);
+            String oldType = fxController.getTbResult().getItems().get(rowIndex).getTypes().get(colIndex);
+            String textStr = "";
+            if (oldType.equals("%"))
+                textStr = "%";
+             else
+                oldValue = oldValue + oldType;
+
+            dialogText = new Text(160, 15, textStr);
+            dialogTextField =  new TextField(oldValue );
+
+            //Button bt = new Button();
+            Group gr = new Group( dialogTextField, dialogText);
+
+            Scene scene = new Scene(gr);
+            dialog.setScene(scene);
+            dialog.setTitle("Введите значение");
+            scene.addEventFilter(KeyEvent.KEY_PRESSED, this::dialogKeyPressHandle);
+
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            dialog.showAndWait();
+            ke.consume();
+
+        } else  if (!ke.isAltDown() && code == KeyCode.UP) {
             System.out.println("UP key pressed");
             lastKeyEvent = ke;
-            increase();
+            increase(rowIndex,  colIndex);
             ke.consume();
             lastKeyEvent = null;
         } else if (!ke.isAltDown() && ke.getCode() == KeyCode.DOWN) {
             System.out.println("DOWN key pressed");
             lastKeyEvent = ke;
-            decrease();
+            decrease(rowIndex, colIndex);
             ke.consume();
             lastKeyEvent = null;
         } else if (numbers.indexOf(name) >- 1) {
             // number key pressed
             System.out.println(name+ " number key pressed.");
-            TablePosition tp = fxController.getTbResult().getFocusModel().getFocusedCell();
             if (name.equals("0")) name = "10";
             TableColumn<Tool, String> c =
                 (TableColumn<Tool, String>) fxController.getTbResult().getColumns().get(Integer.valueOf(name));
@@ -355,7 +431,6 @@ public class MainApp extends Application {
             lastKeyEvent = null;
         } else if (code != KeyCode.LEFT && code != KeyCode.UP && code != KeyCode.RIGHT && code != KeyCode.DOWN ) {
             System.out.println(name + " key pressed.");
-            TablePosition tp = fxController.getTbResult().getFocusModel().getFocusedCell();
             int i = 0;
             for (Tool t : fxController.getTbResult().getItems()) {
                 if (t != null) {
@@ -375,15 +450,22 @@ public class MainApp extends Application {
         if (!ke.isConsumed()&& ke.isAltDown()) {
             if (code == KeyCode.UP) {
                 fxController.getTbResult().getSelectionModel().selectAboveCell();
+                fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
                 ke.consume();
+
             } else if (code == KeyCode.DOWN) {
                 fxController.getTbResult().getSelectionModel().selectBelowCell();
+                fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
                 ke.consume();
+
             } else if (code == KeyCode.LEFT) {
                 fxController.getTbResult().getSelectionModel().selectLeftCell();
+                fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
                 ke.consume();
+
             } else if (code == KeyCode.RIGHT) {
                 fxController.getTbResult().getSelectionModel().selectRightCell();
+                fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
                 ke.consume();
             }
         }
@@ -391,26 +473,58 @@ public class MainApp extends Application {
         fxController.getTbResult().refresh();
     }
 
-    public void MousePressHandle(MouseEvent e) {
+    public void mousePressHandle(MouseEvent e) {
+        if (e.isPrimaryButtonDown()) {
+            System.out.println("left mouse press detected, x="+ e.getX() + ", y=" + e.getY());
+        }
+
         lastMouseEvent = e;
     }
 
-    public void MouseReleaseHandle(MouseEvent e) {
+    public void mouseReleaseHandle(MouseEvent e) {
         if (lastMouseEvent == null) return;
+        TablePosition tp = (TablePosition) fxController.getTbResult().getFocusModel().getFocusedCell();
+        int colIndex = tp.getColumn();
+        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
+        int rowIndex = tp.getRow();
+
+        if (rowIndex != lastRowIndex || colIndex != lastColumnIndex) {
+            //при первом нажатии на неактивную ячейку мышкой, чтобы значение не менялось.
+            // Смысл в том, чтобы именно на активной ячейке менялись значения а не на только что выбранной,
+            // чтобы случайным нажатием кнопки мыши не менять цифру.
+            System.out.println("Первый выбор активной ячейки - значение не изменяем");
+
+            lastRowIndex = rowIndex;
+            lastColumnIndex = colIndex;
+            lastMouseEvent = null;
+            fxController.getTbResult().refresh();
+            e.consume();
+            return;
+        }
+        lastRowIndex = rowIndex;
+        lastColumnIndex = colIndex;
+
+        TableHeaderRow tbHeader = (TableHeaderRow) fxController.getTbResult().lookup("TableHeaderRow");
+
+        if (e.getY() <= tbHeader.getHeight()) {
+            System.out.println("return because e.getY=" + e.getY() +" <= tbHeader.Height=" + tbHeader.getHeight());
+            fxController.getTbResult().refresh();
+            return;
+        }
 
         if (lastMouseEvent.isPrimaryButtonDown()) {
-            System.out.println("left mouse click detected! ");
-            increase();
+            System.out.println("left mouse Release detected! ");
+            //fxController.getTbResult().getRowFactory()
+            increase(rowIndex, colIndex);
             e.consume();
         } else if  (lastMouseEvent.isSecondaryButtonDown() || lastMouseEvent.isMiddleButtonDown()) {
-            System.out.println("middle or right mouse click detected! " + e.getSource());
-            decrease();
+            System.out.println("middle or right mouse Release detected! " + e.getSource());
+            decrease(rowIndex, colIndex);
             e.consume();
         }
         lastMouseEvent = null;
         fxController.getTbResult().refresh();
     }
-
 
     public static int getMaxColumnNum() {
         return maxColumnNum;

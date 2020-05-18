@@ -1,22 +1,16 @@
-import com.sun.tools.javac.Main;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.TextFieldTableCell;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 public class FxController{
 
     private Stage stage;
-    // public final String DATE_FORMAT = "dd.MM.yyyy";
     @FXML
     public GridPane mainPane;
 
@@ -58,17 +52,6 @@ public class FxController{
 
             tableColumn.setCellFactory(TextFieldTableCell.<Tool> forTableColumn());
 
-/*            tableColumn.setOnEditCommit((TableColumn.CellEditEvent<Tool, String> event) -> {
-                TablePosition<Tool, String> pos = event.getTablePosition();
-
-                String newValue = event.getNewValue();
-
-                int row = pos.getRow();
-                Tool tool = event.getTableView().getItems().get(row);
-                tool.setValue(pos.getColumn(), newValue);
-            });
-
- */
             tbResult.getColumns().add(tableColumn);
         }
         tbResult.setItems(tools);
@@ -76,6 +59,7 @@ public class FxController{
         tbResult.getSelectionModel().getSelectedCells().addListener(this::selectCells);
         tbResult.prefHeightProperty().bind(stage.heightProperty());
         tbResult.prefWidthProperty().bind(stage.widthProperty());
+
    }
 
     private void selectCells(ListChangeListener.Change<? extends TablePosition> c) {

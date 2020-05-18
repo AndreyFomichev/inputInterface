@@ -17,18 +17,13 @@ public class Props {
     final String FILE_NAME = "config.properties";
 
     private static Properties properties = new Properties();
-    private Double width, height;
 
     public void load_props(Stage stage, TableView tbResult) {
-        FileInputStream fis;
-
-        try {
-            fis = new FileInputStream(FILE_NAME);
+        try (  FileInputStream     fis = new FileInputStream(FILE_NAME) ){
             properties.loadFromXML(fis);
         } catch (IOException e) {
-            try {
-                fis = new FileInputStream("resources/" + FILE_NAME);
-                properties.load(fis);
+            try (FileInputStream fis2 = new FileInputStream("resources/" + FILE_NAME);){
+                properties.load(fis2);
             } catch (IOException e2) {
                 System.out.println("Файл свойств отсутствует!");
             }
@@ -40,7 +35,8 @@ public class Props {
 
                 stage.setWidth(Double.parseDouble(properties.getProperty(WIDTH)));
                 stage.setHeight(Double.parseDouble(properties.getProperty(HEIGHT)));
-                for (int i=0; i< tbResult.getColumns().size(); i++) {
+
+                for (int i = 0; i < tbResult.getColumns().size(); i++) {
                     TableColumn col  = (TableColumn) tbResult.getColumns().get(i);
                     Double width = Double.parseDouble(properties.getProperty(COLUMN + String.valueOf(i)));
                     col.setPrefWidth(width);
@@ -74,7 +70,5 @@ public class Props {
         }
         System.out.println("properties are stored");
     }
-
-        public static Properties getProperties() { return properties; }
 
 }
