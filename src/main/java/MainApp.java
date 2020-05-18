@@ -387,6 +387,7 @@ public class MainApp extends Application {
             String oldValue = fxController.getTbResult().getItems().get(rowIndex).getValues().get(colIndex);
             String oldType = fxController.getTbResult().getItems().get(rowIndex).getTypes().get(colIndex);
             String textStr = "";
+            if (oldType == null) oldType = "";
             if (oldType.equals("%"))
                 textStr = "%";
              else
