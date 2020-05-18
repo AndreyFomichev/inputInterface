@@ -44,8 +44,8 @@ public class FxController{
             tableColumn.setCellValueFactory(
                 param -> new SimpleStringProperty(
                                  formatParam(indexColumn,
-                                         param.getValue().getValues().get(indexColumn),
-                                         param.getValue().getTypes().get(indexColumn)
+                                     param.getValue().getValues().get(indexColumn),
+                                     param.getValue().getTypes().get(indexColumn)
                                  )
                          )
             );
@@ -56,15 +56,14 @@ public class FxController{
         }
         tbResult.setItems(tools);
         tbResult.getSelectionModel().setCellSelectionEnabled(true);
-        tbResult.getSelectionModel().getSelectedCells().addListener(this::selectCells);
+     //   tbResult.getSelectionModel().getSelectedCells().addListener(this::selectCells);
         tbResult.prefHeightProperty().bind(stage.heightProperty());
         tbResult.prefWidthProperty().bind(stage.widthProperty());
-
    }
 
-    private void selectCells(ListChangeListener.Change<? extends TablePosition> c) {
-        c.getList().forEach(System.out::println);
-    }
+ //   private void selectCells(ListChangeListener.Change<? extends TablePosition> c) {
+   //     c.getList().forEach(System.out::println);
+   // }
 }
 
 

@@ -3,7 +3,6 @@
 /target/
 *.log
 *.ctxt
-/.idea/
 .mtj.tmp/
 *.jar
 *.war
@@ -14,4 +13,4 @@
 *.rar
 hs_err_pid*
 /out/
-/*.iml
+

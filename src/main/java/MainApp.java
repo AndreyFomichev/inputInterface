@@ -231,8 +231,9 @@ public class MainApp extends Application {
     private void saveFile() {
         StringBuilder str = new StringBuilder();
 
-        try(FileOutputStream l = new FileOutputStream(filePath)){
+        try(FileOutputStream l = new FileOutputStream(filePath);
             BufferedWriter r = new BufferedWriter(new OutputStreamWriter(l));
+           ){
             for (String s : header) {
                 if (s != null) {
                     r.write(s);
@@ -257,7 +258,6 @@ public class MainApp extends Application {
                 r.write(str.toString());
                 r.newLine();
             }
-            r.close();
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
@@ -328,7 +328,6 @@ public class MainApp extends Application {
 
     public void dialogKeyPressHandle(KeyEvent ke) {
         KeyCode code = ke.getCode();
-        String name = code.getName();
         BigDecimal bd;
         if  (code == KeyCode.ESCAPE) {
             System.out.println("ESCAPE pressed in dialog, cancel editing");
@@ -396,7 +395,6 @@ public class MainApp extends Application {
             dialogText = new Text(160, 15, textStr);
             dialogTextField =  new TextField(oldValue );
 
-            //Button bt = new Button();
             Group gr = new Group( dialogTextField, dialogText);
 
             Scene scene = new Scene(gr);
@@ -448,7 +446,7 @@ public class MainApp extends Application {
 
         }
 
-        if (!ke.isConsumed()&& ke.isAltDown()) {
+        if (!ke.isConsumed() && ke.isAltDown()) {
             if (code == KeyCode.UP) {
                 fxController.getTbResult().getSelectionModel().selectAboveCell();
                 fxController.getTbResult().scrollTo(fxController.getTbResult().getFocusModel().getFocusedCell().getRow()-1);
@@ -515,7 +513,6 @@ public class MainApp extends Application {
 
         if (lastMouseEvent.isPrimaryButtonDown()) {
             System.out.println("left mouse Release detected! ");
-            //fxController.getTbResult().getRowFactory()
             increase(rowIndex, colIndex);
             e.consume();
         } else if  (lastMouseEvent.isSecondaryButtonDown() || lastMouseEvent.isMiddleButtonDown()) {
