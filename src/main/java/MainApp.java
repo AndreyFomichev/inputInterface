@@ -373,7 +373,7 @@ public class MainApp extends Application {
         String name = code.getName();
         TablePosition tp = (TablePosition) fxController.getTbResult().getFocusModel().getFocusedCell();
         int colIndex = tp.getColumn();
-        if (colIndex <= 0) return; // первую колонку с названиями инструментов не изменяем
+        if (colIndex < 0) return; // первую колонку с названиями инструментов не изменяем
         int rowIndex = tp.getRow();
 
     //    System.out.println(name + " key press processing");
